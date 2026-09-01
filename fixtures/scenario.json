@@ -1,0 +1,12 @@
+{
+  "base_url": "http://127.0.0.1:8099",
+  "principals": {
+    "alice": {"tenant": "acme",   "headers": {"X-User": "alice"}},
+    "bob":   {"tenant": "globex", "headers": {"X-User": "bob"}}
+  },
+  "objects": [
+    {"template": "/invoices/{id}",      "value": "3f1a9c22-0000-4000-8000-000000000001", "kind": "uuid", "owner": "alice"},
+    {"template": "/safe-invoices/{id}", "value": "3f1a9c22-0000-4000-8000-000000000001", "kind": "uuid", "owner": "alice"},
+    {"template": "/shared/{id}",        "value": "pubdoc-terms-v3", "kind": "slug", "owner": "alice"}
+  ]
+}
