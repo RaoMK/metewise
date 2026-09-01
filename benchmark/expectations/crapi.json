@@ -1,0 +1,12 @@
+{
+  "name": "crapi",
+  "description": "TEMPLATE — unverified. crAPI (github.com/OWASP/crAPI) runs as a multi-service Docker stack; this build machine has no Docker, so these entries are placeholders. Bring crAPI up, capture a two-user session, confirm the exact templates, then replace these before quoting any numbers.",
+  "_status": "unverified — needs a Docker host",
+  "should_find": [
+    {"method": "GET", "template": "/identity/api/v2/vehicle/{id}/location"},
+    {"method": "POST", "template": "/workshop/api/merchant/contact_mechanic"}
+  ],
+  "must_not_flag": [
+    {"method": "GET", "template": "/identity/api/v2/user/dashboard"}
+  ]
+}

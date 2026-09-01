@@ -5,6 +5,24 @@ All notable changes to metewise are documented here. Versioning follows
 version**, a bug fix bumps the patch version, and a breaking change bumps the
 major version.
 
+## [0.5.0] — 2026-09-01
+
+### Added
+- **Login recipes.** A principal can supply credentials + a `login` block
+  instead of a static token; metewise logs in, reads the token from the response
+  (`token_path`), and sends it on every request. Example:
+  [`fixtures/principals.login.example.json`](fixtures/principals.login.example.json).
+- **Automatic re-authentication.** If an owner can't read their own object
+  mid-run (typically an expired token) and a login recipe is present, metewise
+  re-authenticates and retries — so a dead token yields a real finding, not a
+  false "all clear". Applies to read and write probes.
+- **crAPI benchmark scaffolding** — [`benchmark/docker/crapi.md`](benchmark/docker/crapi.md)
+  and an expectations template, ready to run on a Docker host.
+
+### Changed
+- Shared JSON-path helper (`shape.get_path`) now backs both token extraction and
+  the write oracle's id extraction.
+
 ## [0.4.0] — 2026-09-01
 
 ### Added
@@ -61,6 +79,7 @@ major version.
 - `scan-har` and `scan` CLI subcommands with CI-shaped exit codes.
 - MIT license; GitHub Actions CI on Python 3.10–3.13.
 
+[0.5.0]: https://github.com/RaoMK/metewise/releases/tag/v0.5.0
 [0.4.0]: https://github.com/RaoMK/metewise/releases/tag/v0.4.0
 [0.3.0]: https://github.com/RaoMK/metewise/releases/tag/v0.3.0
 [0.2.0]: https://github.com/RaoMK/metewise/releases/tag/v0.2.0

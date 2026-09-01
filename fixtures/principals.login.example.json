@@ -1,0 +1,25 @@
+{
+  "_comment": "Example principals that log in for their own tokens instead of pasting them. metewise runs each 'login' recipe, reads the token from the response at 'token_path', and sends it as the 'header' formatted by 'format'. It also re-runs the recipe automatically if a token expires mid-run.",
+  "alice": {
+    "tenant": "acme",
+    "login": {
+      "url": "http://127.0.0.1:8096/login",
+      "method": "POST",
+      "body": {"username": "alice", "password": "pw-alice"},
+      "token_path": "$.auth_token",
+      "header": "Authorization",
+      "format": "Bearer {token}"
+    }
+  },
+  "bob": {
+    "tenant": "globex",
+    "login": {
+      "url": "http://127.0.0.1:8096/login",
+      "method": "POST",
+      "body": {"username": "bob", "password": "pw-bob"},
+      "token_path": "$.auth_token",
+      "header": "Authorization",
+      "format": "Bearer {token}"
+    }
+  }
+}

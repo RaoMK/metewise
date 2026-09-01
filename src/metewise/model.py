@@ -78,6 +78,8 @@ class Principal:
     role: str = "member"
     # Headers merged into every request made as this principal (auth token, etc).
     headers: dict[str, str] = field(default_factory=dict)
+    # Optional login recipe used to (re)acquire `headers`; see metewise.auth.
+    login: dict | None = None
 
     @property
     def is_anon(self) -> bool:

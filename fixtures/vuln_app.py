@@ -80,9 +80,22 @@ class Handler(BaseHTTPRequestHandler):
     def _parts(self) -> list[str]:
         return self.path.split("?")[0].strip("/").split("/")
 
+    def _user(self) -> str | None:
+        """Identify the caller by X-User, or by a `Bearer tok-<name>` token
+        (so login recipes can be exercised end to end)."""
+        u = self.headers.get("X-User")
+        if u:
+            return u
+        auth = self.headers.get("Authorization", "")
+        if auth.startswith("Bearer tok-"):
+            name = auth[len("Bearer tok-"):]
+            if name in USERS:
+                return name
+        return None
+
     # -- reads ------------------------------------------------------------
     def do_GET(self) -> None:
-        user = self.headers.get("X-User")
+        user = self._user()
         path = self._parts()
 
         if len(path) == 2 and path[0] == "invoices":
@@ -111,8 +124,16 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- create (seed source) --------------------------------------------
     def do_POST(self) -> None:
-        user = self.headers.get("X-User")
+        user = self._user()
         path = self._parts()
+
+        # LOGIN: exchange credentials for a token, to exercise login recipes.
+        if len(path) == 1 and path[0] == "login":
+            body = self._read_body()
+            name = body.get("username")
+            if name in USERS and body.get("password") == f"pw-{name}":
+                return self._json(200, {"auth_token": f"tok-{name}"})
+            return self._json(401, {"error": "bad credentials"})
 
         # SIDE-EFFECTING endpoint: exists so we can prove metewise refuses to
         # probe it. If this ever runs during a scan, something is wrong.
@@ -136,7 +157,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- update -----------------------------------------------------------
     def do_PUT(self) -> None:
-        user = self.headers.get("X-User")
+        user = self._user()
         path = self._parts()
 
         if len(path) == 2 and path[0] == "invoices":
@@ -164,7 +185,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- delete -----------------------------------------------------------
     def do_DELETE(self) -> None:
-        user = self.headers.get("X-User")
+        user = self._user()
         path = self._parts()
 
         if len(path) == 2 and path[0] == "invoices":

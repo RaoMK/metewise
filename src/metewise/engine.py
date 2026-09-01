@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 
-from . import http
+from . import auth, http
 from .model import Adjudication, Finding, ObjectRef, Principal, Probe, Tier, Verdict
 from .oracle import Corners, adjudicate
 from .shape import classify_value
@@ -50,6 +50,14 @@ def probe_object(
     absent_url = url_for(_synthesize_absent(ref))
 
     baseline = http.request(method, target_url, owner.headers)
+    # A dead owner token turns every probe into a false "all clear". If the
+    # owner can't read their own object and has a login recipe, re-authenticate
+    # both sides once and try again before giving up.
+    if baseline[0] // 100 != 2 and (owner.login or actor.login):
+        auth.refresh(owner)
+        auth.refresh(actor)
+        baseline = http.request(method, target_url, owner.headers)
+
     baseline2 = http.request(method, target_url, owner.headers)
     probe_resp = http.request(method, target_url, actor.headers)
     deny_ctrl = http.request(method, absent_url, actor.headers)

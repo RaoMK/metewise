@@ -166,6 +166,38 @@ def classify_value(v: str) -> str:
     return "opaque"
 
 
+def get_path(body: object, path: str) -> object | None:
+    """Read a value from a JSON body by a simple `$.a.b[0].c` path.
+
+    Supports dict keys and integer list indices. Returns None if any step is
+    missing. Used to pull an auth token out of a login response and to read a
+    server-generated id out of a create response.
+    """
+    if not isinstance(path, str) or not path.startswith("$"):
+        return None
+    cur = body
+    # tokens like: a  b[0]  c
+    for part in path[1:].lstrip(".").split("."):
+        if not part:
+            continue
+        name, _, rest = part.partition("[")
+        if name:
+            if not isinstance(cur, dict) or name not in cur:
+                return None
+            cur = cur[name]
+        while rest:
+            idx_str, _, rest = rest.partition("]")
+            rest = rest.lstrip("[")
+            try:
+                idx = int(idx_str)
+            except ValueError:
+                return None
+            if not isinstance(cur, list) or not (-len(cur) <= idx < len(cur)):
+                return None
+            cur = cur[idx]
+    return cur
+
+
 def looks_identifier(s: str, kind: str) -> bool:
     """Is this scalar plausibly an object id worth reasoning about?
 

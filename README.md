@@ -153,6 +153,33 @@ Create a file called `principals.json` like this:
 > `"headers": { "Cookie": "session=abc123" }`. A partial value is fine — metewise
 > matches if the header *contains* what you wrote.
 
+#### Don't want to paste tokens? Let metewise log in.
+
+If your tokens are short-lived (many are), give metewise the **credentials** and
+a *login recipe* instead of a token. It logs in, reads the token from the
+response, sends it on every request — and **re-logs-in automatically if the
+token expires mid-run**, so a stale token never turns into a false "all clear".
+
+```json
+{
+  "alice": {
+    "tenant": "acme",
+    "login": {
+      "url": "https://api.example.com/login",
+      "method": "POST",
+      "body": { "username": "alice", "password": "s3cret" },
+      "token_path": "$.auth_token",
+      "header": "Authorization",
+      "format": "Bearer {token}"
+    }
+  }
+}
+```
+
+`token_path` is where the token sits in the login response (`$.auth_token`,
+`$.data.token`, …). See [`fixtures/principals.login.example.json`](fixtures/principals.login.example.json)
+for a runnable example.
+
 ### Step 3 — Run it
 
 ```sh
@@ -347,12 +374,15 @@ that check runs in CI so accuracy can't silently regress.
 - [x] Verified against a real vulnerable app: **VAmPI** —
       [100% / 100%](benchmark/results/vampi.md) on its in-scope BOLA, both
       directions, with the leaked secret as evidence
+- [x] **Login recipes** — give credentials instead of tokens; metewise logs in
+      and re-authenticates automatically when a token expires mid-run
 
 ### Still to come
 
-- [ ] Numbers against **crAPI** — needs a Docker host for its multi-service stack
-      (the harness itself is ready)
-- [ ] GraphQL / gRPC, and login/SSO flows (for now, paste current tokens)
+- [ ] Numbers against **crAPI** — the harness and instructions are ready
+      ([benchmark/docker/crapi.md](benchmark/docker/crapi.md)); running its
+      multi-service stack needs a Docker host
+- [ ] GraphQL / gRPC transports (REST + JSON today)
 
 ---
 

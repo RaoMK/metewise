@@ -23,7 +23,7 @@ import argparse
 import json
 import sys
 
-from . import har
+from . import auth, har
 from .discover import plan_probes, plan_write_probes
 from .engine import probe_object, to_finding
 from .model import ObjectRef, Principal, Verdict
@@ -33,9 +33,17 @@ from .writeprobe import probe_write
 def _load_principals(raw: dict) -> dict[str, Principal]:
     out = {}
     for name, spec in raw.items():
+        headers = dict(spec.get("headers", {}))
+        login = spec.get("login")
+        if login:
+            # Acquire the auth header now; keep the recipe for mid-run refresh.
+            try:
+                headers.update(auth.acquire_headers(login))
+            except auth.LoginError as e:
+                print(f"warning: login for '{name}' failed: {e}", file=sys.stderr)
         out[name] = Principal(
             name=name, tenant=spec.get("tenant"),
-            role=spec.get("role", "member"), headers=spec.get("headers", {}),
+            role=spec.get("role", "member"), headers=headers, login=login,
         )
     return out
 

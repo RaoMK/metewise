@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import uuid
 
-from . import http
+from . import auth, http
 from .model import (
     Adjudication, CreateRecipe, Principal, Probe, Tier, Verdict, WritePlan,
 )
+from .shape import get_path
 
 
 def probe_write(plan: WritePlan) -> Adjudication:
@@ -44,6 +45,10 @@ def _mutate(plan: WritePlan) -> Adjudication:
     url = plan.base_url.rstrip("/") + plan.template.format(id=plan.ref.value)
 
     snap_status, _, snap_body = http.request("GET", url, plan.owner.headers)
+    if snap_status // 100 != 2 and (plan.owner.login or plan.actor.login):
+        auth.refresh(plan.owner)
+        auth.refresh(plan.actor)
+        snap_status, _, snap_body = http.request("GET", url, plan.owner.headers)
     if snap_status // 100 != 2 or not isinstance(snap_body, dict):
         return _adj(plan, Verdict.INVALID, "n/a",
                     f"owner '{plan.owner.name}' could not read the object to "
@@ -89,6 +94,9 @@ def _destroy(plan: WritePlan) -> Adjudication:
                     "no create recipe to seed a throwaway; destructive probe skipped")
 
     seeded = _seed(plan.recipe, plan.owner)
+    if seeded is None and plan.owner.login:
+        auth.refresh(plan.owner)
+        seeded = _seed(plan.recipe, plan.owner)
     if seeded is None:
         return _adj(plan, Verdict.INVALID, "n/a",
                     f"could not seed a throwaway object as '{plan.owner.name}'")
@@ -115,7 +123,7 @@ def _seed(recipe: CreateRecipe, owner: Principal) -> str | None:
     status, _, body = http.request(recipe.method, url, owner.headers, recipe.body)
     if status // 100 != 2:
         return None
-    val = _by_path(body, recipe.id_path)
+    val = get_path(body, recipe.id_path)
     if val is None:
         val = _first_identifier(body)
     return str(val) if val is not None else None
@@ -151,19 +159,6 @@ def _sentinel(original: object) -> object:
     if isinstance(original, float):
         return -9.99e8
     return f"metewise-canary-{token}"
-
-
-def _by_path(body: object, path: str) -> object | None:
-    if not isinstance(path, str) or not path.startswith("$."):
-        return None
-    cur = body
-    for part in path[2:].split("."):
-        part = part.split("[")[0]
-        if isinstance(cur, dict) and part in cur:
-            cur = cur[part]
-        else:
-            return None
-    return cur
 
 
 def _first_identifier(body: object) -> object | None:
