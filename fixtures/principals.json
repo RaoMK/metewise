@@ -1,0 +1,14 @@
+{
+  "alice": {
+    "tenant": "acme",
+    "headers": {
+      "X-User": "alice"
+    }
+  },
+  "bob": {
+    "tenant": "globex",
+    "headers": {
+      "X-User": "bob"
+    }
+  }
+}
