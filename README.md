@@ -338,11 +338,19 @@ against targets with known bugs. On the bundled fixture it currently gets
 **100% precision and 100% recall** (3/3 planted bugs, 0 false positives), and
 that check runs in CI so accuracy can't silently regress.
 
-**Can't yet (on the roadmap):**
+### Done
 
+- [x] Read-side BOLA on real captured traffic (four-corner oracle)
+- [x] Write-side BOLA — PUT/PATCH (snapshot/restore) and DELETE (seeded throwaways)
+- [x] Benchmark harness with precision/recall — **100% / 100%** on the bundled
+      fixture, runs in CI
+
+### Still to come
+
+- [ ] Real precision/recall numbers against the Dockerised OWASP apps (crAPI,
+      VAmPI) — the harness and compose files are ready; the numbers just need a
+      run on a Docker host
 - [ ] GraphQL / gRPC, and login/SSO flows (for now, paste current tokens)
-- [ ] Published precision/recall against the Dockerised OWASP apps (crAPI,
-      VAmPI) — the harness is ready; the numbers await a run on a Docker host
 
 ---
 
