@@ -1,13 +1,18 @@
 {
   "name": "vampi",
-  "description": "TEMPLATE — fill in after a real run. VAmPI exposes user/book objects; its classic BOLA lets one user read/modify another's record. Confirm the exact templates from your capture (VAmPI uses names, e.g. /users/v1/{username}, /books/v1/{book_title}) before trusting the numbers, then replace these placeholders.",
-  "_status": "unverified — no Docker on the build machine; populate from an actual VAmPI capture",
+  "description": "VAmPI (github.com/erev0s/VAmPI) in vulnerable mode. Verified against a live instance on 2026-09-01. Its clean, in-scope object-level BOLA is GET /books/v1/{book_title}: with a valid token, any user receives any book's secret_content regardless of owner. metewise catches it in both directions with the secret as evidence. See results/vampi.md for numbers and scope notes.",
   "should_find": [
-    {"method": "GET", "template": "/users/v1/{id}"},
-    {"method": "PUT", "template": "/users/v1/{id}"},
     {"method": "GET", "template": "/books/v1/{id}"}
   ],
   "must_not_flag": [
-    {"method": "GET", "template": "/users/v1/_debug"}
-  ]
+    {"method": "PUT", "template": "/users/v1/{id}/email"}
+  ],
+  "out_of_scope": {
+    "note": "Real VAmPI bugs that metewise v1 does not (and does not claim to) detect, with why:",
+    "items": [
+      {"endpoint": "GET /users/v1/{username}", "why": "no auth at all -> anon receives it too, so metewise's anon-control correctly classifies it as public, not cross-user BOLA. It is a missing-authentication bug, a different class."},
+      {"endpoint": "PUT /users/v1/{username}/password", "why": "write-only sub-resource with no readable state at the same URL; the effect (changed password) is not observable via GET, so the effect-based write oracle cannot confirm it."},
+      {"endpoint": "usernames as identifiers", "why": "the seeded usernames (name1/name2) are under 6 chars, below metewise's identifier-length floor, so /users/v1/{username} is never templated."}
+    ]
+  }
 }

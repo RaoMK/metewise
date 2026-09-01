@@ -73,11 +73,18 @@ For **crAPI**, use the project's own compose from
 `github.com/OWASP/crAPI` (it ships a multi-service stack), point captures at
 `http://localhost:8888`, and write `expectations/crapi.json` the same way.
 
-> **Status:** the VAmPI/crAPI expectation files are **templates**, not verified
-> numbers — the build machine has no Docker, so only the fixture numbers above
-> are real. Fill the templates in from an actual capture before quoting any
-> VAmPI/crAPI precision/recall. Never publish a number the harness didn't
-> produce.
+### VAmPI — verified ✅
+
+Scored against a **live** VAmPI in vulnerable mode (run natively on Python 3.9;
+no Docker needed): **100% precision, 100% recall** on its in-scope BOLA
+(`GET /books/v1/{id}`), caught in both directions with the leaked secret as
+evidence. Full write-up, scope notes, and a reproduce recipe:
+[`results/vampi.md`](results/vampi.md).
+
+> **Status:** the fixture and VAmPI numbers above are **real**, produced by the
+> harness. crAPI is not done yet — it needs a Docker host to run its multi-service
+> stack; write `expectations/crapi.json` from an actual capture before quoting any
+> crAPI numbers. Never publish a number the harness didn't produce.
 
 ## Adding a target
 

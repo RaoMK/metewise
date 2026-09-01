@@ -5,6 +5,23 @@ All notable changes to metewise are documented here. Versioning follows
 version**, a bug fix bumps the patch version, and a breaking change bumps the
 major version.
 
+## [0.4.0] — 2026-09-01
+
+### Added
+- **Verified against a real vulnerable app: VAmPI.** metewise scores
+  **100% precision / 100% recall** on VAmPI's in-scope BOLA
+  (`GET /books/v1/{id}`), caught in both directions with the leaked secret as
+  evidence — run natively on Python 3.9, no Docker. See
+  [`benchmark/results/vampi.md`](benchmark/results/vampi.md) and the verified
+  `benchmark/expectations/vampi.json` (which also documents the VAmPI bugs
+  outside metewise v1's scope, and why).
+
+### Known limitations (documented, from the VAmPI run)
+- Ownership is inferred from which principal the API returned a value to; a
+  "list all objects" endpoint that returns everything to everyone makes ownership
+  ambiguous, so those objects are skipped. Capture per-user detail views, or
+  await explicit-owner-field support.
+
 ## [0.3.0] — 2026-08-31
 
 ### Added
@@ -44,6 +61,7 @@ major version.
 - `scan-har` and `scan` CLI subcommands with CI-shaped exit codes.
 - MIT license; GitHub Actions CI on Python 3.10–3.13.
 
+[0.4.0]: https://github.com/RaoMK/metewise/releases/tag/v0.4.0
 [0.3.0]: https://github.com/RaoMK/metewise/releases/tag/v0.3.0
 [0.2.0]: https://github.com/RaoMK/metewise/releases/tag/v0.2.0
 [0.1.0]: https://github.com/RaoMK/metewise/releases/tag/v0.1.0

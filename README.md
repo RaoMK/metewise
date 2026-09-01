@@ -344,12 +344,14 @@ that check runs in CI so accuracy can't silently regress.
 - [x] Write-side BOLA — PUT/PATCH (snapshot/restore) and DELETE (seeded throwaways)
 - [x] Benchmark harness with precision/recall — **100% / 100%** on the bundled
       fixture, runs in CI
+- [x] Verified against a real vulnerable app: **VAmPI** —
+      [100% / 100%](benchmark/results/vampi.md) on its in-scope BOLA, both
+      directions, with the leaked secret as evidence
 
 ### Still to come
 
-- [ ] Real precision/recall numbers against the Dockerised OWASP apps (crAPI,
-      VAmPI) — the harness and compose files are ready; the numbers just need a
-      run on a Docker host
+- [ ] Numbers against **crAPI** — needs a Docker host for its multi-service stack
+      (the harness itself is ready)
 - [ ] GraphQL / gRPC, and login/SSO flows (for now, paste current tokens)
 
 ---

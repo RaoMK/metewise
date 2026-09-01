@@ -5,4 +5,4 @@ traffic across principals and uses a four-corner oracle to decide, with
 evidence, whether an object leaked across an ownership boundary.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
