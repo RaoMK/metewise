@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metewise"
+version = "0.1.0"
+description = "A broken-object-authorization (BOLA/IDOR) regression fuzzer with a four-corner oracle."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []  # v1 is stdlib-only by design
+
+[project.scripts]
+metewise = "metewise.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
