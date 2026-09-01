@@ -373,9 +373,11 @@ that check runs in CI so accuracy can't silently regress.
 - [x] Write-side BOLA — PUT/PATCH (snapshot/restore) and DELETE (seeded throwaways)
 - [x] Benchmark harness with precision/recall — **100% / 100%** on the bundled
       fixture, runs in CI
-- [x] Verified against a real vulnerable app: **VAmPI** —
-      [100% / 100%](benchmark/results/vampi.md) on its in-scope BOLA, both
-      directions, with the leaked secret as evidence
+- [x] Verified against real vulnerable apps — both run natively, no Docker:
+      **VAmPI** ([100% / 100%](benchmark/results/vampi.md), leaked book secret)
+      and **OWASP Juice Shop** ([100% / 100%](benchmark/results/juiceshop.md),
+      the "View Basket" IDOR, both directions, with the victim's basket contents
+      as evidence)
 - [x] **Login recipes** — give credentials instead of tokens; metewise logs in
       and re-authenticates automatically when a token expires mid-run
 - [x] **GraphQL** — queries with the object id in `variables` or inline; the
@@ -387,9 +389,9 @@ that check runs in CI so accuracy can't silently regress.
 
 ### Still to come
 
-- [ ] Numbers against **crAPI** — the harness and instructions are ready
-      ([benchmark/docker/crapi.md](benchmark/docker/crapi.md)); running its
-      multi-service stack needs a Docker host
+- [ ] Numbers against **crAPI** — genuinely needs Docker (its multi-service
+      stack can't run natively like VAmPI/Juice Shop can); the harness and
+      instructions are ready ([benchmark/docker/crapi.md](benchmark/docker/crapi.md))
 - [ ] **gRPC** — deliberately not started: it's binary Protobuf over HTTP/2 and
       needs `.proto`/reflection and a non-HAR capture path, so it's a separate
       effort rather than a transport toggle

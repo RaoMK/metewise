@@ -5,6 +5,22 @@ All notable changes to metewise are documented here. Versioning follows
 version**, a bug fix bumps the patch version, and a breaking change bumps the
 major version.
 
+## [0.8.0] — 2026-09-01
+
+### Added
+- **Verified against OWASP Juice Shop.** metewise scores **100% precision /
+  100% recall** on Juice Shop's "View Basket" IDOR (`GET /rest/basket/{id}`),
+  both directions, with the victim's basket contents as evidence — run natively
+  with `npm start`, no Docker. A public product endpoint is correctly not
+  flagged. See [`benchmark/results/juiceshop.md`](benchmark/results/juiceshop.md)
+  and `benchmark/expectations/juiceshop.json`.
+
+### Changed
+- **Small integer path ids are now recognized.** A bare-integer path segment
+  (e.g. `/basket/6`, `/users/42`) is treated as an object id regardless of
+  length; integer *query* values keep the ≥3-digit floor (usually pagination /
+  filter noise). This is what let metewise catch the Juice Shop basket IDOR.
+
 ## [0.7.0] — 2026-09-01
 
 ### Added
@@ -110,6 +126,7 @@ major version.
 - `scan-har` and `scan` CLI subcommands with CI-shaped exit codes.
 - MIT license; GitHub Actions CI on Python 3.10–3.13.
 
+[0.8.0]: https://github.com/RaoMK/metewise/releases/tag/v0.8.0
 [0.7.0]: https://github.com/RaoMK/metewise/releases/tag/v0.7.0
 [0.6.0]: https://github.com/RaoMK/metewise/releases/tag/v0.6.0
 [0.5.0]: https://github.com/RaoMK/metewise/releases/tag/v0.5.0

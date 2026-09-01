@@ -81,6 +81,14 @@ no Docker needed): **100% precision, 100% recall** on its in-scope BOLA
 evidence. Full write-up, scope notes, and a reproduce recipe:
 [`results/vampi.md`](results/vampi.md).
 
+### OWASP Juice Shop — verified ✅
+
+Scored against a **live** Juice Shop v20.2.0 (run natively with `npm start`; no
+Docker needed): **100% precision, 100% recall** on its "View Basket" IDOR
+(`GET /rest/basket/{id}`), caught both directions with the victim's basket
+contents as evidence, while a public product endpoint is correctly not flagged.
+Full write-up: [`results/juiceshop.md`](results/juiceshop.md).
+
 > **Status:** the fixture and VAmPI numbers above are **real**, produced by the
 > harness. crAPI is not done yet — it needs a Docker host to run its multi-service
 > stack; write `expectations/crapi.json` from an actual capture before quoting any

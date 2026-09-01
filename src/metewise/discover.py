@@ -62,12 +62,17 @@ def templatize(url: str, ids: dict[str, dict]) -> list[tuple[str, str, str]]:
     path_segs = sp.path.split("/")
     query = parse_qsl(sp.query, keep_blank_values=True)
 
-    def seg_is_param(raw: str) -> tuple[bool, str]:
+    def seg_is_param(raw: str, in_path: bool) -> tuple[bool, str]:
         dec = unquote(raw)
         if not dec:
             return False, ""
         kind = classify_value(dec)
-        if kind in ("uuid", "int") and _looks_identifier(dec, kind):
+        # A bare-integer *path* segment (/basket/1, /users/42) is almost always
+        # an object id, even when short -- unlike an integer *query* value, which
+        # is often pagination/filter noise, so we keep the length floor there.
+        if kind == "int" and (in_path or _looks_identifier(dec, kind)):
+            return True, kind
+        if kind == "uuid" and _looks_identifier(dec, kind):
             return True, kind
         if dec in ids:
             return True, ids[dec]["kind"]
@@ -75,11 +80,11 @@ def templatize(url: str, ids: dict[str, dict]) -> list[tuple[str, str, str]]:
 
     slots: list[tuple[str, str, str]] = []  # (locator, value, kind)
     for i, raw in enumerate(path_segs):
-        ok, kind = seg_is_param(raw)
+        ok, kind = seg_is_param(raw, in_path=True)
         if ok:
             slots.append((f"path:{i}", unquote(raw), kind))
     for qi, (k, v) in enumerate(query):
-        ok, kind = seg_is_param(v)
+        ok, kind = seg_is_param(v, in_path=False)
         if ok:
             slots.append((f"query:{qi}", v, kind))
 

@@ -1,0 +1,10 @@
+{
+  "name": "juice-shop",
+  "description": "OWASP Juice Shop (github.com/juice-shop/juice-shop) v20.2.0, verified against a live instance on 2026-09-01, run natively with `npm start` (no Docker). Its classic IDOR/BOLA is GET /rest/basket/{id}: any logged-in user can fetch any basket by id (retrieveBasket does no ownership check). metewise catches it in both directions with the victim's basket contents as evidence. /api/Products/{id} is public (served to anonymous clients) and must not be flagged.",
+  "should_find": [
+    {"method": "GET", "template": "/rest/basket/{id}"}
+  ],
+  "must_not_flag": [
+    {"method": "GET", "template": "/api/Products/{id}"}
+  ]
+}
