@@ -66,14 +66,16 @@ def run_scenario(scenario: dict) -> int:
 # scan-har  (ingest capture, auto-discover)
 # ---------------------------------------------------------------------------
 
-def run_har(har_path: str, principals_path: str) -> int:
+def run_har(har_paths: list[str], principals_path: str) -> int:
     with open(principals_path) as fh:
         principals = _load_principals(json.load(fh))
-    exchanges = har.load(har_path, principals)
+    exchanges = []
+    for path in har_paths:
+        exchanges.extend(har.load(path, principals))
     plans = plan_probes(exchanges, principals)
 
     print(
-        f"ingested {len(exchanges)} exchanges; "
+        f"ingested {len(exchanges)} exchanges from {len(har_paths)} capture(s); "
         f"planned {len(plans)} cross-principal probe(s)\n",
         file=sys.stderr,
     )
@@ -141,8 +143,8 @@ def main(argv: list[str] | None = None) -> int:
     s1 = sub.add_parser("scan", help="run an explicit scenario JSON")
     s1.add_argument("scenario")
 
-    s2 = sub.add_parser("scan-har", help="ingest a HAR capture and auto-discover")
-    s2.add_argument("har")
+    s2 = sub.add_parser("scan-har", help="ingest HAR capture(s) and auto-discover")
+    s2.add_argument("har", nargs="+", help="one or more HAR capture files")
     s2.add_argument("--principals", required=True, help="principals JSON file")
 
     args = ap.parse_args(argv)
@@ -151,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
             with open(args.scenario) as fh:
                 return run_scenario(json.load(fh))
         if args.cmd == "scan-har":
-            return run_har(args.har, args.principals)
+            return run_har(args.har, args.principals)  # args.har is a list
     except (OSError, json.JSONDecodeError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
