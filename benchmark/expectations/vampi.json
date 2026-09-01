@@ -1,0 +1,13 @@
+{
+  "name": "vampi",
+  "description": "TEMPLATE — fill in after a real run. VAmPI exposes user/book objects; its classic BOLA lets one user read/modify another's record. Confirm the exact templates from your capture (VAmPI uses names, e.g. /users/v1/{username}, /books/v1/{book_title}) before trusting the numbers, then replace these placeholders.",
+  "_status": "unverified — no Docker on the build machine; populate from an actual VAmPI capture",
+  "should_find": [
+    {"method": "GET", "template": "/users/v1/{id}"},
+    {"method": "PUT", "template": "/users/v1/{id}"},
+    {"method": "GET", "template": "/books/v1/{id}"}
+  ],
+  "must_not_flag": [
+    {"method": "GET", "template": "/users/v1/_debug"}
+  ]
+}

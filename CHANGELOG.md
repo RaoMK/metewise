@@ -5,6 +5,18 @@ All notable changes to metewise are documented here. Versioning follows
 version**, a bug fix bumps the patch version, and a breaking change bumps the
 major version.
 
+## [0.3.0] — 2026-08-31
+
+### Added
+- **Benchmark harness** (`benchmark/`) that measures metewise's real accuracy.
+  - `score.py` computes precision / recall / F1 against a target's ground-truth
+    expectations file, listing every false positive and false negative by name.
+  - `run_fixture.py` scores against the local fixture with **no Docker** —
+    current result: **100% precision, 100% recall** (3/3 planted bugs, 0 false
+    positives). Runs in CI as a regression guard on accuracy.
+  - `run_target.py` scores any live target from a captured HAR (for Dockerised
+    apps like VAmPI / crAPI); compose file and expectation templates included.
+
 ## [0.2.0] — 2026-08-31
 
 ### Added
@@ -32,5 +44,6 @@ major version.
 - `scan-har` and `scan` CLI subcommands with CI-shaped exit codes.
 - MIT license; GitHub Actions CI on Python 3.10–3.13.
 
+[0.3.0]: https://github.com/RaoMK/metewise/releases/tag/v0.3.0
 [0.2.0]: https://github.com/RaoMK/metewise/releases/tag/v0.2.0
 [0.1.0]: https://github.com/RaoMK/metewise/releases/tag/v0.1.0

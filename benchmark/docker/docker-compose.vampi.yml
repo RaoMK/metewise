@@ -1,0 +1,19 @@
+# VAmPI — a deliberately vulnerable REST API (OWASP-style), good for BOLA tests.
+# Bring it up, capture a two-user session as a HAR, then score with run_target.py.
+#
+#   docker compose -f benchmark/docker/docker-compose.vampi.yml up -d
+#   # ...capture captures/vampi.har against http://localhost:5000 ...
+#   python3 benchmark/run_target.py \
+#       --har captures/vampi.har \
+#       --principals captures/vampi.principals.json \
+#       --expectations benchmark/expectations/vampi.json
+#   docker compose -f benchmark/docker/docker-compose.vampi.yml down
+
+services:
+  vampi:
+    image: erev0s/vampi:latest
+    container_name: metewise-vampi
+    ports:
+      - "5000:5000"
+    environment:
+      - vulnerable=1   # 1 = vulnerable mode (BOLA present); 0 = secured baseline

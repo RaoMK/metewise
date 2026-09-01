@@ -1,0 +1,15 @@
+{
+  "name": "metewise-fixture",
+  "description": "Ground truth for fixtures/vuln_app.py: three planted BOLAs (read/update/delete on /invoices) and four correctly-handled endpoints that must not be flagged.",
+  "should_find": [
+    {"method": "GET",    "template": "/invoices/{id}"},
+    {"method": "PUT",    "template": "/invoices/{id}"},
+    {"method": "DELETE", "template": "/invoices/{id}"}
+  ],
+  "must_not_flag": [
+    {"method": "GET",    "template": "/safe-invoices/{id}"},
+    {"method": "GET",    "template": "/shared/{id}"},
+    {"method": "PUT",    "template": "/safe-invoices/{id}"},
+    {"method": "DELETE", "template": "/safe-invoices/{id}"}
+  ]
+}

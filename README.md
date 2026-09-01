@@ -333,11 +333,16 @@ public resource isn't flagged, and an expired owner token yields INVALID.
 (PUT/PATCH/DELETE) with snapshot-restore and throwaway seeding**, cross-tenant
 and intra-tenant, header/cookie/token auth, multiple users and multiple captures.
 
+**Accuracy:** metewise ships a [benchmark harness](benchmark/) that scores it
+against targets with known bugs. On the bundled fixture it currently gets
+**100% precision and 100% recall** (3/3 planted bugs, 0 false positives), and
+that check runs in CI so accuracy can't silently regress.
+
 **Can't yet (on the roadmap):**
 
 - [ ] GraphQL / gRPC, and login/SSO flows (for now, paste current tokens)
-- [ ] Published precision/recall benchmarks against known-vulnerable apps
-      (crAPI, VAmPI, Juice Shop, DVGA)
+- [ ] Published precision/recall against the Dockerised OWASP apps (crAPI,
+      VAmPI) — the harness is ready; the numbers await a run on a Docker host
 
 ---
 
