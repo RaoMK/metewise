@@ -15,16 +15,20 @@ from .oracle import Corners, adjudicate
 from .shape import classify_value
 
 
-def _synthesize_absent(ref: ObjectRef) -> str:
+def synthesize_absent(value: str, kind: str) -> str:
     """A well-formed but (almost certainly) nonexistent id of the same kind, to
-    provoke the deny-control response."""
-    if ref.kind == "uuid":
+    provoke the deny-control response. Shared by the REST and GraphQL probers."""
+    if kind == "uuid":
         return "00000000-dead-4000-8000-000000000000"
-    if ref.kind == "int":
-        return str(int(ref.value) * 1000 + 987654) if ref.value.isdigit() else "999999999"
-    if ref.kind == "slug":
-        return "metewise-absent-" + hashlib.sha1(ref.value.encode()).hexdigest()[:8]
-    return "metewise-absent-" + hashlib.sha1(ref.value.encode()).hexdigest()[:12]
+    if kind == "int":
+        return str(int(value) * 1000 + 987654) if value.isdigit() else "999999999"
+    if kind == "slug":
+        return "metewise-absent-" + hashlib.sha1(value.encode()).hexdigest()[:8]
+    return "metewise-absent-" + hashlib.sha1(value.encode()).hexdigest()[:12]
+
+
+def _synthesize_absent(ref: ObjectRef) -> str:
+    return synthesize_absent(ref.value, ref.kind)
 
 
 def _liveness_ok(base_url: str, principal: Principal, probe_url: str) -> bool:

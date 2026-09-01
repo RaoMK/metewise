@@ -5,6 +5,23 @@ All notable changes to metewise are documented here. Versioning follows
 version**, a bug fix bumps the patch version, and a breaking change bumps the
 major version.
 
+## [0.6.0] — 2026-09-01
+
+### Added
+- **GraphQL support.** metewise now discovers and probes GraphQL BOLA: it finds
+  the id-bearing argument (in `variables` or inline in the query), re-issues the
+  operation as another principal, and judges the JSON response with the same
+  four-corner oracle. GraphQL soft-errors (HTTP 200 + `errors` / null data) are
+  correctly treated as denials, not leaks, and INVALID when the owner can't
+  fetch their own object. Auto-runs on any GraphQL traffic in the capture; read
+  queries only (mutations are skipped as writes).
+- Shared `engine.synthesize_absent` used by both the REST and GraphQL probers.
+
+### Not started (documented in the roadmap)
+- **gRPC** — binary Protobuf over HTTP/2 needs `.proto`/reflection and a non-HAR
+  capture path; it's a separate effort, not a transport toggle.
+- **GraphQL mutations** (write-side) — reads are covered.
+
 ## [0.5.0] — 2026-09-01
 
 ### Added
@@ -79,6 +96,7 @@ major version.
 - `scan-har` and `scan` CLI subcommands with CI-shaped exit codes.
 - MIT license; GitHub Actions CI on Python 3.10–3.13.
 
+[0.6.0]: https://github.com/RaoMK/metewise/releases/tag/v0.6.0
 [0.5.0]: https://github.com/RaoMK/metewise/releases/tag/v0.5.0
 [0.4.0]: https://github.com/RaoMK/metewise/releases/tag/v0.4.0
 [0.3.0]: https://github.com/RaoMK/metewise/releases/tag/v0.3.0

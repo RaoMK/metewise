@@ -356,9 +356,11 @@ public resource isn't flagged, and an expired owner token yields INVALID.
 
 ## What v1 can and can't do
 
-**Can:** REST + JSON APIs, read-side object leaks (GET), **write-side leaks
+**Can:** REST + JSON APIs, **GraphQL** (object id in variables or inline),
+read-side object leaks (GET / GraphQL queries), **write-side leaks
 (PUT/PATCH/DELETE) with snapshot-restore and throwaway seeding**, cross-tenant
-and intra-tenant, header/cookie/token auth, multiple users and multiple captures.
+and intra-tenant, header/cookie/token auth (or login recipes), multiple users
+and multiple captures.
 
 **Accuracy:** metewise ships a [benchmark harness](benchmark/) that scores it
 against targets with known bugs. On the bundled fixture it currently gets
@@ -376,13 +378,19 @@ that check runs in CI so accuracy can't silently regress.
       directions, with the leaked secret as evidence
 - [x] **Login recipes** — give credentials instead of tokens; metewise logs in
       and re-authenticates automatically when a token expires mid-run
+- [x] **GraphQL** — queries with the object id in `variables` or inline; the
+      same four-corner oracle judges the JSON response, and GraphQL soft-errors
+      (HTTP 200 + `errors`) are correctly treated as denials, not leaks
 
 ### Still to come
 
 - [ ] Numbers against **crAPI** — the harness and instructions are ready
       ([benchmark/docker/crapi.md](benchmark/docker/crapi.md)); running its
       multi-service stack needs a Docker host
-- [ ] GraphQL / gRPC transports (REST + JSON today)
+- [ ] **gRPC** — deliberately not started: it's binary Protobuf over HTTP/2 and
+      needs `.proto`/reflection and a non-HAR capture path, so it's a separate
+      effort rather than a transport toggle
+- [ ] GraphQL **mutations** (write-side) — queries (reads) are covered today
 
 ---
 

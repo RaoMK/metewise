@@ -25,6 +25,7 @@ Run standalone:  python fixtures/vuln_app.py 8099
 from __future__ import annotations
 
 import json
+import re
 import sys
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -134,6 +135,30 @@ class Handler(BaseHTTPRequestHandler):
             if name in USERS and body.get("password") == f"pw-{name}":
                 return self._json(200, {"auth_token": f"tok-{name}"})
             return self._json(401, {"error": "bad credentials"})
+
+        # GraphQL: a single endpoint. `invoice` is VULNERABLE (no ownership
+        # check); `safeInvoice` is DEFENDED (null to non-owners). GraphQL reports
+        # failures as HTTP 200 + an `errors` array -- the soft-error trap.
+        if len(path) == 1 and path[0] == "graphql":
+            body = self._read_body()
+            q = body.get("query", "")
+            gvars = body.get("variables") or {}
+            if user is None:
+                return self._json(200, {"data": None,
+                                        "errors": [{"message": "unauthenticated"}]})
+            inv_id = gvars.get("id")
+            if inv_id is None:
+                m = re.search(r'id:\s*"([^"]+)"', q)
+                inv_id = m.group(1) if m else None
+            if "safeInvoice" in q:
+                inv = INVOICES.get(inv_id)
+                if inv and inv["owner"] == user:
+                    return self._json(200, {"data": {"safeInvoice": inv}})
+                return self._json(200, {"data": {"safeInvoice": None}})
+            if "invoice" in q:
+                return self._json(200, {"data": {"invoice": INVOICES.get(inv_id)}})
+            return self._json(200, {"data": None,
+                                    "errors": [{"message": "unknown field"}]})
 
         # SIDE-EFFECTING endpoint: exists so we can prove metewise refuses to
         # probe it. If this ever runs during a scan, something is wrong.

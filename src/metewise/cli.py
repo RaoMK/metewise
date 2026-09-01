@@ -26,6 +26,7 @@ import sys
 from . import auth, har
 from .discover import plan_probes, plan_write_probes
 from .engine import probe_object, to_finding
+from .graphql import plan_graphql_probes, probe_graphql
 from .model import ObjectRef, Principal, Verdict
 from .writeprobe import probe_write
 
@@ -86,6 +87,7 @@ def run_har(
         exchanges.extend(har.load(path, principals))
 
     read_plans = plan_probes(exchanges, principals)
+    gql_plans = plan_graphql_probes(exchanges, principals)  # read-only queries
     write_plans = (
         plan_write_probes(exchanges, principals, allow_destructive=allow_destructive)
         if write else []
@@ -95,6 +97,8 @@ def run_har(
         f"ingested {len(exchanges)} exchanges from {len(har_paths)} capture(s); "
         f"planned {len(read_plans)} read probe(s)"
     )
+    if gql_plans:
+        msg += f", {len(gql_plans)} graphql probe(s)"
     if write:
         msg += f" and {len(write_plans)} write probe(s)"
         if not allow_destructive:
@@ -108,6 +112,9 @@ def run_har(
             method=p.method,
         )
         _sort(adj, p.owner, p.actor, findings, invalid)
+    for gp in gql_plans:
+        adj = probe_graphql(gp)
+        _sort(adj, gp.owner, gp.actor, findings, invalid)
     for wp in write_plans:
         adj = probe_write(wp)
         _sort(adj, wp.owner, wp.actor, findings, invalid)
@@ -154,8 +161,12 @@ def _report(findings, invalid) -> None:
         dup = " (repeat)" if f.fingerprint in seen else ""
         seen.add(f.fingerprint)
         mark = "CONFIRMED" if adj.confidence == "confirmed" else "PROBABLE "
-        verb = {"GET": "read", "HEAD": "read", "DELETE": "deleted"}.get(
-            f.method, "modified")
+        if "graphql" in f.template.lower() or f.method in ("GET", "HEAD"):
+            verb = "read"
+        elif f.method == "DELETE":
+            verb = "deleted"
+        else:
+            verb = "modified"
         print(f"  [{mark}] {f.fingerprint}  {f.method} {f.template}{dup}")
         print(f"      axis: {f.axis}   actor '{actor.name}' {verb} '{owner.name}' object")
         print(f"      {adj.reason}")
