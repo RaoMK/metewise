@@ -150,6 +150,31 @@ class Handler(BaseHTTPRequestHandler):
             if inv_id is None:
                 m = re.search(r'id:\s*"([^"]+)"', q)
                 inv_id = m.group(1) if m else None
+
+            # -- mutations (write-side) --
+            if "createInvoice" in q:
+                nid = str(uuid.uuid4())
+                INVOICES[nid] = {
+                    "id": nid, "owner": user, "tenant": USERS[user],
+                    "total": gvars.get("total", 0.0),
+                    "customer_email": gvars.get("customer_email", f"{user}@example"),
+                }
+                return self._json(200, {"data": {"createInvoice": INVOICES[nid]}})
+            if "updateInvoice" in q:  # VULNERABLE: no ownership check
+                inv = INVOICES.get(inv_id)
+                if inv is None:
+                    return self._json(200, {"data": {"updateInvoice": None}})
+                for k in ("customer_email", "total"):
+                    if k in gvars:
+                        inv[k] = gvars[k]
+                return self._json(200, {"data": {"updateInvoice": inv}})
+            if "deleteInvoice" in q:  # VULNERABLE: no ownership check
+                if inv_id in INVOICES:
+                    del INVOICES[inv_id]
+                    return self._json(200, {"data": {"deleteInvoice": {"id": inv_id}}})
+                return self._json(200, {"data": {"deleteInvoice": None}})
+
+            # -- queries (read-side) --
             if "safeInvoice" in q:
                 inv = INVOICES.get(inv_id)
                 if inv and inv["owner"] == user:

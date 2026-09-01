@@ -5,6 +5,20 @@ All notable changes to metewise are documented here. Versioning follows
 version**, a bug fix bumps the patch version, and a breaking change bumps the
 major version.
 
+## [0.7.0] — 2026-09-01
+
+### Added
+- **GraphQL mutations (write-side BOLA).** metewise now probes update and delete
+  mutations, verifying the effect through a *paired read query* for the same
+  object:
+  - **update** mutations — snapshot via the read query, write a sentinel as the
+    attacker, confirm it stuck, then restore and re-verify.
+  - **delete** mutations — seed a throwaway via the object's create mutation,
+    delete *that* as the attacker, confirm it's gone; gated by
+    `--allow-destructive`.
+  - Mutations are parsed for their id argument and (for updates) a mutable field;
+    the create/update/delete kind is inferred from the field name.
+
 ## [0.6.0] — 2026-09-01
 
 ### Added
@@ -96,6 +110,7 @@ major version.
 - `scan-har` and `scan` CLI subcommands with CI-shaped exit codes.
 - MIT license; GitHub Actions CI on Python 3.10–3.13.
 
+[0.7.0]: https://github.com/RaoMK/metewise/releases/tag/v0.7.0
 [0.6.0]: https://github.com/RaoMK/metewise/releases/tag/v0.6.0
 [0.5.0]: https://github.com/RaoMK/metewise/releases/tag/v0.5.0
 [0.4.0]: https://github.com/RaoMK/metewise/releases/tag/v0.4.0

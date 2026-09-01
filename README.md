@@ -381,6 +381,9 @@ that check runs in CI so accuracy can't silently regress.
 - [x] **GraphQL** — queries with the object id in `variables` or inline; the
       same four-corner oracle judges the JSON response, and GraphQL soft-errors
       (HTTP 200 + `errors`) are correctly treated as denials, not leaks
+- [x] **GraphQL mutations** (write-side) — update/delete BOLA verified by effect
+      through a paired read query: updates are sentinel-then-restore, deletes run
+      on a throwaway seeded via the create mutation
 
 ### Still to come
 
@@ -390,7 +393,6 @@ that check runs in CI so accuracy can't silently regress.
 - [ ] **gRPC** — deliberately not started: it's binary Protobuf over HTTP/2 and
       needs `.proto`/reflection and a non-HAR capture path, so it's a separate
       effort rather than a transport toggle
-- [ ] GraphQL **mutations** (write-side) — queries (reads) are covered today
 
 ---
 

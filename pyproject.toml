@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metewise"
-version = "0.6.0"
+version = "0.7.0"
 description = "A broken-object-authorization (BOLA/IDOR) regression fuzzer with a four-corner oracle."
 readme = "README.md"
 requires-python = ">=3.10"

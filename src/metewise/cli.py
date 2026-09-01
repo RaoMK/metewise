@@ -26,7 +26,9 @@ import sys
 from . import auth, har
 from .discover import plan_probes, plan_write_probes
 from .engine import probe_object, to_finding
-from .graphql import plan_graphql_probes, probe_graphql
+from .graphql import (
+    plan_graphql_probes, plan_graphql_write_probes, probe_graphql, probe_graphql_write,
+)
 from .model import ObjectRef, Principal, Verdict
 from .writeprobe import probe_write
 
@@ -92,6 +94,11 @@ def run_har(
         plan_write_probes(exchanges, principals, allow_destructive=allow_destructive)
         if write else []
     )
+    gql_write_plans = (
+        plan_graphql_write_probes(exchanges, principals,
+                                  allow_destructive=allow_destructive)
+        if write else []
+    )
 
     msg = (
         f"ingested {len(exchanges)} exchanges from {len(har_paths)} capture(s); "
@@ -100,7 +107,7 @@ def run_har(
     if gql_plans:
         msg += f", {len(gql_plans)} graphql probe(s)"
     if write:
-        msg += f" and {len(write_plans)} write probe(s)"
+        msg += f" and {len(write_plans) + len(gql_write_plans)} write probe(s)"
         if not allow_destructive:
             msg += " (DELETE tier off; pass --allow-destructive to enable)"
     print(msg + "\n", file=sys.stderr)
@@ -118,6 +125,9 @@ def run_har(
     for wp in write_plans:
         adj = probe_write(wp)
         _sort(adj, wp.owner, wp.actor, findings, invalid)
+    for gwp in gql_write_plans:
+        adj = probe_graphql_write(gwp)
+        _sort(adj, gwp.owner, gwp.actor, findings, invalid)
 
     _report(findings, invalid)
     return _exit_code(findings, invalid)
@@ -161,7 +171,12 @@ def _report(findings, invalid) -> None:
         dup = " (repeat)" if f.fingerprint in seen else ""
         seen.add(f.fingerprint)
         mark = "CONFIRMED" if adj.confidence == "confirmed" else "PROBABLE "
-        if "graphql" in f.template.lower() or f.method in ("GET", "HEAD"):
+        tl = f.template.lower()
+        if "graphql" in tl:
+            verb = ("deleted" if ("delete" in tl or "remove" in tl)
+                    else "modified" if any(k in tl for k in ("update", "edit", "set"))
+                    else "read")
+        elif f.method in ("GET", "HEAD"):
             verb = "read"
         elif f.method == "DELETE":
             verb = "deleted"
