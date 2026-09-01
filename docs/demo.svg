@@ -25,7 +25,7 @@
   <!-- body -->
   <text x="20" y="70"><tspan class="g">$ </tspan><tspan class="b">metewise scan-har capture.har --principals principals.json</tspan></text>
 
-  <text x="20" y="114" class="d">ingested 4 exchanges from 1 capture(s); planned 8 cross-principal probe(s)</text>
+  <text x="20" y="114" class="d">ingested 7 exchanges from 1 capture(s); planned 8 read probe(s)</text>
 
   <text x="20" y="158" class="w">2 finding(s):</text>
 

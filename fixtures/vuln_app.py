@@ -1,15 +1,23 @@
 """A deliberately-mixed fixture API for testing metewise's oracle.
 
-Three invoice endpoints exercising the cases the oracle must get right:
+Read endpoints:
 
-  GET /invoices/{id}        VULNERABLE: no ownership check -> real BOLA
-  GET /safe-invoices/{id}   DEFENDED with a soft-403: returns 200 + an error
-                            body, the classic false-positive trap
-  GET /shared/{id}          legitimately public: same shape for everyone,
-                            must NOT be flagged
+  GET    /invoices/{id}        VULNERABLE: no ownership check -> real BOLA
+  GET    /safe-invoices/{id}   DEFENDED with a soft-403: 200 + an error body,
+                               the classic false-positive trap
+  GET    /shared/{id}          legitimately public: same for everyone
 
-Auth is a toy: header "X-User: <name>" identifies the principal. Two users in
-two tenants, each owning one invoice.
+Write endpoints (for write-side BOLA testing):
+
+  POST   /invoices             create; used by metewise to *seed* throwaway
+                               objects so destructive probes never touch real data
+  PUT    /invoices/{id}        VULNERABLE: updates without an ownership check
+  DELETE /invoices/{id}        VULNERABLE: deletes without an ownership check
+  PUT    /safe-invoices/{id}   DEFENDED: 403 unless caller owns it
+  DELETE /safe-invoices/{id}   DEFENDED: 403 unless caller owns it
+  POST   /invoices/{id}/pay    SIDE-EFFECTING: metewise must NEVER probe this
+
+Auth is a toy: header "X-User: <name>" identifies the principal.
 
 Run standalone:  python fixtures/vuln_app.py 8099
 """
@@ -18,6 +26,7 @@ from __future__ import annotations
 
 import json
 import sys
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # name -> tenant
@@ -45,6 +54,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # keep test output quiet
         pass
 
+    # -- helpers ----------------------------------------------------------
     def _json(self, status: int, body: object) -> None:
         payload = json.dumps(body).encode()
         self.send_response(status)
@@ -53,13 +63,29 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def _empty(self, status: int) -> None:
+        self.send_response(status)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _read_body(self) -> dict:
+        length = int(self.headers.get("Content-Length") or 0)
+        if not length:
+            return {}
+        try:
+            return json.loads(self.rfile.read(length).decode() or "{}")
+        except json.JSONDecodeError:
+            return {}
+
+    def _parts(self) -> list[str]:
+        return self.path.split("?")[0].strip("/").split("/")
+
+    # -- reads ------------------------------------------------------------
     def do_GET(self) -> None:
         user = self.headers.get("X-User")
-        path = self.path.split("?")[0].strip("/").split("/")
+        path = self._parts()
 
         if len(path) == 2 and path[0] == "invoices":
-            # VULNERABLE: requires a logged-in user, but never checks that the
-            # user owns the invoice. Classic BOLA between authenticated users.
             if user is None or user not in USERS:
                 return self._json(401, {"error": "unauthenticated"})
             inv = INVOICES.get(path[1])
@@ -72,7 +98,6 @@ class Handler(BaseHTTPRequestHandler):
             if inv is None:
                 return self._json(404, {"error": "not found"})
             if user is None or inv["owner"] != user:
-                # SOFT-403: refuses, but with a 200 status. The trap.
                 return self._json(200, {"error": "forbidden", "code": "OWNER_MISMATCH"})
             return self._json(200, inv)
 
@@ -80,7 +105,85 @@ class Handler(BaseHTTPRequestHandler):
             doc = SHARED.get(path[1])
             if doc is None:
                 return self._json(404, {"error": "not found"})
-            return self._json(200, doc)  # same for everyone, by design
+            return self._json(200, doc)
+
+        return self._json(404, {"error": "not found"})
+
+    # -- create (seed source) --------------------------------------------
+    def do_POST(self) -> None:
+        user = self.headers.get("X-User")
+        path = self._parts()
+
+        # SIDE-EFFECTING endpoint: exists so we can prove metewise refuses to
+        # probe it. If this ever runs during a scan, something is wrong.
+        if len(path) == 3 and path[0] == "invoices" and path[2] == "pay":
+            return self._json(200, {"charged": True, "id": path[1]})
+
+        if len(path) == 1 and path[0] == "invoices":
+            if user is None or user not in USERS:
+                return self._json(401, {"error": "unauthenticated"})
+            body = self._read_body()
+            new_id = str(uuid.uuid4())
+            inv = {
+                "id": new_id, "owner": user, "tenant": USERS[user],
+                "total": body.get("total", 0.0),
+                "customer_email": body.get("customer_email", f"{user}@example"),
+            }
+            INVOICES[new_id] = inv
+            return self._json(201, inv)
+
+        return self._json(404, {"error": "not found"})
+
+    # -- update -----------------------------------------------------------
+    def do_PUT(self) -> None:
+        user = self.headers.get("X-User")
+        path = self._parts()
+
+        if len(path) == 2 and path[0] == "invoices":
+            # VULNERABLE: updates without checking ownership.
+            if user is None or user not in USERS:
+                return self._json(401, {"error": "unauthenticated"})
+            inv = INVOICES.get(path[1])
+            if inv is None:
+                return self._json(404, {"error": "not found"})
+            inv.update({k: v for k, v in self._read_body().items()
+                        if k not in ("id", "owner", "tenant")})
+            return self._json(200, inv)
+
+        if len(path) == 2 and path[0] == "safe-invoices":
+            inv = INVOICES.get(path[1])
+            if inv is None:
+                return self._json(404, {"error": "not found"})
+            if user is None or inv["owner"] != user:
+                return self._json(403, {"error": "forbidden"})
+            inv.update({k: v for k, v in self._read_body().items()
+                        if k not in ("id", "owner", "tenant")})
+            return self._json(200, inv)
+
+        return self._json(404, {"error": "not found"})
+
+    # -- delete -----------------------------------------------------------
+    def do_DELETE(self) -> None:
+        user = self.headers.get("X-User")
+        path = self._parts()
+
+        if len(path) == 2 and path[0] == "invoices":
+            # VULNERABLE: deletes without checking ownership.
+            if user is None or user not in USERS:
+                return self._json(401, {"error": "unauthenticated"})
+            if path[1] not in INVOICES:
+                return self._json(404, {"error": "not found"})
+            del INVOICES[path[1]]
+            return self._empty(204)
+
+        if len(path) == 2 and path[0] == "safe-invoices":
+            inv = INVOICES.get(path[1])
+            if inv is None:
+                return self._json(404, {"error": "not found"})
+            if user is None or inv["owner"] != user:
+                return self._json(403, {"error": "forbidden"})
+            del INVOICES[path[1]]
+            return self._empty(204)
 
         return self._json(404, {"error": "not found"})
 

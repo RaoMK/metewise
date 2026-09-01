@@ -164,3 +164,16 @@ def classify_value(v: str) -> str:
     if _SLUG.match(v) and not v.isdigit():
         return "slug"
     return "opaque"
+
+
+def looks_identifier(s: str, kind: str) -> bool:
+    """Is this scalar plausibly an object id worth reasoning about?
+
+    Deliberately broad on collection (URL usage filters later) but excludes
+    trivia -- single-digit flags, short enums -- that would only add noise.
+    """
+    if kind == "uuid":
+        return True
+    if kind == "int":
+        return len(s) >= 3            # skip counts, versions, small flags
+    return len(s) >= 6                # slug / opaque: emails, tokens, names

@@ -64,7 +64,7 @@ metewise scan-har fixtures/capture.har --principals fixtures/principals.json
 **What you'll see:**
 
 ```
-ingested 4 exchanges from 1 capture(s); planned 8 cross-principal probe(s)
+ingested 7 exchanges from 1 capture(s); planned 8 read probe(s)
 
 2 finding(s):
 
@@ -204,6 +204,37 @@ metewise sets an exit code so you can wire it into a pipeline:
 
 ---
 
+## Testing writes too (update & delete)
+
+By default metewise only *reads* — it's completely safe. But the scariest BOLA
+bugs let another user **change** or **delete** your data, not just see it. metewise
+can test for those too, and it's built to do so without wrecking your data:
+
+```sh
+# also test PUT/PATCH (reversible — see below)
+metewise scan-har alice.har bob.har --principals principals.json --write
+
+# also test DELETE (uses throwaway objects — see below)
+metewise scan-har alice.har bob.har --principals principals.json --allow-destructive
+```
+
+**How it stays safe:**
+
+- **Updates (`--write`)** — before letting the "attacker" change an object,
+  metewise takes a snapshot of it as the real owner, writes a clearly-marked
+  test value (`metewise-canary-...`), checks whether it stuck, then **puts the
+  original value back** and verifies the restore. If a restore ever fails, it
+  says so loudly.
+- **Deletes (`--allow-destructive`)** — metewise **never deletes your real
+  data**. It first *creates a brand-new throwaway object* (by replaying a
+  "create" request it saw in your capture), then tries to delete *that* as the
+  wrong user. Your real objects are never the target.
+- **Dangerous endpoints are never touched.** Anything that looks like it moves
+  money or sends messages — `/pay`, `/charge`, `/refund`, `/email`, `/sms`,
+  `/webhook`, and similar — is automatically skipped, always.
+
+Still: run write tests against a **staging/test environment**, not production.
+
 ## Frequently asked questions
 
 **Do I need to know how to code?**
@@ -211,8 +242,11 @@ No. If you can install Python, save a file, and copy-paste a command, you can
 use metewise.
 
 **Will it break or delete anything in my app?**
-No. Version 1 only *reads* (GET requests). It never creates, edits, or deletes
-data.
+Not by default — with no extra flags it only *reads* (GET requests). If you opt
+in to write testing, updates are snapshotted and restored, deletes only ever hit
+throwaway objects metewise created itself, and money/message endpoints are always
+skipped. See [Testing writes too](#testing-writes-too-update--delete). Even so,
+point write tests at staging, not production.
 
 **It printed "RUN INVALID". What now?**
 One of your tokens probably expired. Recording the HAR and getting fresh tokens,
@@ -272,6 +306,13 @@ which user → find the values the API handed back (those are the object IDs wor
 testing) → rewrite URLs into templates like `/invoices/{id}` → work out who owns
 each object → try every object as every *other* user.
 
+**Writes are judged by effect, not by response.** A successful unauthorized
+`DELETE` just returns `204` — the damage only shows when the owner looks again.
+So for a write, metewise performs the action as the attacker and then checks, *as
+the owner*, whether the object actually changed or vanished. That check is the
+proof, which is why write findings are effect-verified, and why updates can be
+snapshotted and restored and deletes can be aimed at seeded throwaways.
+
 ---
 
 ## Running the tests (for contributors)
@@ -288,15 +329,15 @@ public resource isn't flagged, and an expired owner token yields INVALID.
 
 ## What v1 can and can't do
 
-**Can:** REST + JSON APIs, GET/read-side object leaks, cross-tenant and
-intra-tenant, header/cookie/token auth, multiple users and multiple captures.
+**Can:** REST + JSON APIs, read-side object leaks (GET), **write-side leaks
+(PUT/PATCH/DELETE) with snapshot-restore and throwaway seeding**, cross-tenant
+and intra-tenant, header/cookie/token auth, multiple users and multiple captures.
 
 **Can't yet (on the roadmap):**
 
-- [ ] Testing create/update/delete (write-side) safely
-- [ ] Automatically creating an object first when an endpoint needs one
 - [ ] GraphQL / gRPC, and login/SSO flows (for now, paste current tokens)
 - [ ] Published precision/recall benchmarks against known-vulnerable apps
+      (crAPI, VAmPI, Juice Shop, DVGA)
 
 ---
 

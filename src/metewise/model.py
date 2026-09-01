@@ -34,9 +34,35 @@ class Tier(enum.IntEnum):
     """Safety tier of an HTTP operation. Higher = more destructive."""
 
     READ = 0        # GET, HEAD
-    MUTATE = 1      # PUT, PATCH on run-created objects, with snapshot/restore
-    DESTRUCTIVE = 2  # DELETE and side-effecting POSTs; opt-in only
+    MUTATE = 1      # PUT, PATCH -- tested with snapshot/restore
+    DESTRUCTIVE = 2  # DELETE -- tested only on freshly seeded throwaway objects
     FORBIDDEN = 3   # payment / messaging / webhooks; never probed automatically
+
+
+# Path markers that make an endpoint too dangerous to probe automatically: real
+# money, real messages, real external calls. Matched case-insensitively anywhere
+# in the template.
+FORBIDDEN_MARKERS = (
+    "pay", "payment", "charge", "refund", "checkout", "transfer", "payout",
+    "email", "sms", "notify", "notification", "webhook", "invite", "subscribe",
+    "wire", "withdraw", "purchase", "order/confirm",
+)
+
+
+def tier_of(method: str, template: str) -> Tier:
+    """Classify one operation's safety tier from its method and path."""
+    low = template.lower()
+    if any(m in low for m in FORBIDDEN_MARKERS):
+        return Tier.FORBIDDEN
+    m = method.upper()
+    if m in ("GET", "HEAD"):
+        return Tier.READ
+    if m in ("PUT", "PATCH"):
+        return Tier.MUTATE
+    if m == "DELETE":
+        return Tier.DESTRUCTIVE
+    # POST and anything else: too ambiguous (create vs. action) to probe safely.
+    return Tier.FORBIDDEN
 
 
 @dataclass(frozen=True)
@@ -133,3 +159,31 @@ class Finding:
     axis: str                     # "cross-tenant" | "intra-tenant" | "unauthenticated"
     confidence: str
     leaked_fields: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CreateRecipe:
+    """How to mint a throwaway object, learned from an observed POST. Lets
+    destructive probes act on a fresh object instead of real data."""
+
+    base_url: str
+    path: str                     # collection path, e.g. "/invoices"
+    method: str                   # usually POST
+    body: Any                     # request body to replay
+    id_path: str                  # JSON path where the new id appears, e.g. "$.id"
+    kind: str
+
+
+@dataclass
+class WritePlan:
+    """A planned write-side probe: `actor` tries to modify/delete an object
+    owned by `owner`, at the given safety tier."""
+
+    base_url: str
+    template: str
+    method: str
+    ref: ObjectRef
+    owner: Principal
+    actor: Principal
+    tier: Tier
+    recipe: CreateRecipe | None = None  # seed source for destructive probes

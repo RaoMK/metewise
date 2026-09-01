@@ -22,23 +22,15 @@ on the roadmap.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from urllib.parse import parse_qsl, unquote, urlencode, urlsplit
+from urllib.parse import parse_qsl, unquote, urlsplit
 
-from .model import Exchange, ObjectRef, Principal
-from .shape import classify_value, leaf_values
+from .model import (
+    CreateRecipe, Exchange, ObjectRef, Principal, Tier, WritePlan, tier_of,
+)
+from .shape import classify_value, leaf_values, looks_identifier
 
-
-def _looks_identifier(s: str, kind: str) -> bool:
-    """Is this scalar plausibly an object id worth reasoning about?
-
-    Deliberately broad on collection (URL usage filters later) but excludes
-    trivia -- single-digit flags, short enums -- that would only add noise.
-    """
-    if kind == "uuid":
-        return True
-    if kind == "int":
-        return len(s) >= 3            # skip counts, versions, small flags
-    return len(s) >= 6                # slug / opaque: emails, tokens, names
+# Back-compat alias: this heuristic now lives in shape.py.
+_looks_identifier = looks_identifier
 
 
 def collect_identifiers(exchanges: list[Exchange]) -> dict[str, dict]:
@@ -161,3 +153,90 @@ def _owner_of(value: str, ids: dict[str, dict], fallback: str) -> str | None:
     if len(producers) == 1:
         return next(iter(producers))          # sole producer owns it
     return None                               # produced by several -> shared/public
+
+
+# ---------------------------------------------------------------------------
+# Write-side: create recipes (for seeding) and write-probe plans
+# ---------------------------------------------------------------------------
+
+def collect_create_recipes(exchanges: list[Exchange]) -> dict[str, CreateRecipe]:
+    """Learn how to mint throwaway objects from observed POSTs.
+
+    A POST that returns an identifier the request didn't send is a creation
+    endpoint; replaying it lets destructive probes act on a fresh object rather
+    than on real data. Keyed by collection path (e.g. "/invoices").
+    """
+    recipes: dict[str, CreateRecipe] = {}
+    for ex in exchanges:
+        if ex.method != "POST" or ex.status // 100 != 2:
+            continue
+        sp = urlsplit(ex.url)
+        req_vals = {str(v) for v in leaf_values(ex.req_body or {}).values()}
+        for path, val in leaf_values(ex.resp_body).items():
+            if not isinstance(val, (str, int)) or isinstance(val, bool):
+                continue
+            s = str(val)
+            kind = classify_value(s)
+            if not looks_identifier(s, kind) or s in req_vals:
+                continue                      # not a server-generated id
+            recipes[sp.path] = CreateRecipe(
+                base_url=f"{sp.scheme}://{sp.netloc}", path=sp.path,
+                method="POST", body=ex.req_body, id_path=path, kind=kind,
+            )
+            break
+    return recipes
+
+
+def plan_write_probes(
+    exchanges: list[Exchange], principals: dict[str, Principal],
+    *, allow_destructive: bool = False,
+) -> list[WritePlan]:
+    """Plan PUT/PATCH/DELETE probes. Forbidden endpoints are dropped; DELETE is
+    planned only when `allow_destructive` and a create recipe exists to seed a
+    throwaway."""
+    ids = collect_identifiers(exchanges)
+    recipes = collect_create_recipes(exchanges)
+    actors = dict(principals)
+    actors.setdefault("anon", Principal("anon", headers={}))
+
+    plans: dict[tuple, WritePlan] = {}
+    for ex in exchanges:
+        if ex.method not in ("PUT", "PATCH", "DELETE"):
+            continue
+        if ex.status // 100 != 2:
+            continue
+        base = _base_url(ex.url)
+        for template, value, kind in templatize(ex.url, ids):
+            tier = tier_of(ex.method, template)
+            if tier is Tier.FORBIDDEN:
+                continue
+            if tier is Tier.DESTRUCTIVE and not allow_destructive:
+                continue
+            owner_name = _owner_of(value, ids, ex.principal)
+            if owner_name is None or owner_name not in principals:
+                continue
+            owner = principals[owner_name]
+            ref = ObjectRef(value, kind, owner_name, owner.tenant)
+
+            recipe = None
+            path = template.split("?")[0]
+            if path.endswith("/{id}"):
+                recipe = recipes.get(path[: -len("/{id}")])
+            if tier is Tier.DESTRUCTIVE and recipe is None:
+                continue  # no safe way to seed a throwaway -> skip destructive
+
+            for actor_name, actor in actors.items():
+                if actor_name == owner_name:
+                    continue
+                # Destructive probes seed their own object, so the specific
+                # discovered value is irrelevant -> dedupe without it.
+                key = (
+                    (ex.method, template, actor_name) if tier is Tier.DESTRUCTIVE
+                    else (ex.method, template, value, actor_name)
+                )
+                if key in plans:
+                    continue
+                plans[key] = WritePlan(
+                    base, template, ex.method, ref, owner, actor, tier, recipe,
+                )
+    return list(plans.values())

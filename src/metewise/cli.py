@@ -24,9 +24,10 @@ import json
 import sys
 
 from . import har
-from .discover import plan_probes
+from .discover import plan_probes, plan_write_probes
 from .engine import probe_object, to_finding
 from .model import ObjectRef, Principal, Verdict
+from .writeprobe import probe_write
 
 
 def _load_principals(raw: dict) -> dict[str, Principal]:
@@ -66,26 +67,43 @@ def run_scenario(scenario: dict) -> int:
 # scan-har  (ingest capture, auto-discover)
 # ---------------------------------------------------------------------------
 
-def run_har(har_paths: list[str], principals_path: str) -> int:
+def run_har(
+    har_paths: list[str], principals_path: str,
+    *, write: bool = False, allow_destructive: bool = False,
+) -> int:
     with open(principals_path) as fh:
         principals = _load_principals(json.load(fh))
     exchanges = []
     for path in har_paths:
         exchanges.extend(har.load(path, principals))
-    plans = plan_probes(exchanges, principals)
 
-    print(
-        f"ingested {len(exchanges)} exchanges from {len(har_paths)} capture(s); "
-        f"planned {len(plans)} cross-principal probe(s)\n",
-        file=sys.stderr,
+    read_plans = plan_probes(exchanges, principals)
+    write_plans = (
+        plan_write_probes(exchanges, principals, allow_destructive=allow_destructive)
+        if write else []
     )
+
+    msg = (
+        f"ingested {len(exchanges)} exchanges from {len(har_paths)} capture(s); "
+        f"planned {len(read_plans)} read probe(s)"
+    )
+    if write:
+        msg += f" and {len(write_plans)} write probe(s)"
+        if not allow_destructive:
+            msg += " (DELETE tier off; pass --allow-destructive to enable)"
+    print(msg + "\n", file=sys.stderr)
+
     findings, invalid = [], []
-    for p in plans:
+    for p in read_plans:
         adj = probe_object(
             p.base_url, p.template, p.ref, actor=p.actor, owner=p.owner,
             method=p.method,
         )
         _sort(adj, p.owner, p.actor, findings, invalid)
+    for wp in write_plans:
+        adj = probe_write(wp)
+        _sort(adj, wp.owner, wp.actor, findings, invalid)
+
     _report(findings, invalid)
     return _exit_code(findings, invalid)
 
@@ -128,8 +146,10 @@ def _report(findings, invalid) -> None:
         dup = " (repeat)" if f.fingerprint in seen else ""
         seen.add(f.fingerprint)
         mark = "CONFIRMED" if adj.confidence == "confirmed" else "PROBABLE "
+        verb = {"GET": "read", "HEAD": "read", "DELETE": "deleted"}.get(
+            f.method, "modified")
         print(f"  [{mark}] {f.fingerprint}  {f.method} {f.template}{dup}")
-        print(f"      axis: {f.axis}   actor '{actor.name}' read '{owner.name}' object")
+        print(f"      axis: {f.axis}   actor '{actor.name}' {verb} '{owner.name}' object")
         print(f"      {adj.reason}")
         for path, val in adj.leaked_fields.items():
             print(f"        leaked {path} = {val!r}")
@@ -146,6 +166,10 @@ def main(argv: list[str] | None = None) -> int:
     s2 = sub.add_parser("scan-har", help="ingest HAR capture(s) and auto-discover")
     s2.add_argument("har", nargs="+", help="one or more HAR capture files")
     s2.add_argument("--principals", required=True, help="principals JSON file")
+    s2.add_argument("--write", action="store_true",
+                    help="also test PUT/PATCH (reversible, with snapshot/restore)")
+    s2.add_argument("--allow-destructive", action="store_true",
+                    help="also test DELETE on freshly seeded throwaway objects")
 
     args = ap.parse_args(argv)
     try:
@@ -153,7 +177,11 @@ def main(argv: list[str] | None = None) -> int:
             with open(args.scenario) as fh:
                 return run_scenario(json.load(fh))
         if args.cmd == "scan-har":
-            return run_har(args.har, args.principals)  # args.har is a list
+            return run_har(
+                args.har, args.principals,  # args.har is a list
+                write=args.write or args.allow_destructive,
+                allow_destructive=args.allow_destructive,
+            )
     except (OSError, json.JSONDecodeError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
