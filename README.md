@@ -8,6 +8,8 @@ That bug has a name — **BOLA** (Broken Object Level Authorization), also calle
 finds it for you, automatically, and *proves* it by showing you the exact data
 that leaked.
 
+![Example run of metewise catching two invoices leaking between users, with the leaked email and total printed](docs/demo.svg)
+
 ---
 
 ## The problem, in one picture

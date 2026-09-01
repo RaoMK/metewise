@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="512" viewBox="0 0 720 512" font-family="SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace" font-size="13">
+  <defs>
+    <style>
+      .d{fill:#6e7681}          /* dim   */
+      .w{fill:#e6edf3}          /* white */
+      .g{fill:#3fb950}          /* green */
+      .b{fill:#79c0ff}          /* blue  */
+      .y{fill:#f2cc60}          /* yellow*/
+      .r{fill:#ff7b72}          /* red   */
+      .n{fill:#7ee787}          /* name  */
+      text{white-space:pre}
+    </style>
+  </defs>
+
+  <!-- window -->
+  <rect x="0" y="0" width="720" height="512" rx="10" fill="#0d1117"/>
+  <rect x="0" y="0" width="720" height="40" rx="10" fill="#161b22"/>
+  <rect x="0" y="30" width="720" height="10" fill="#161b22"/>
+  <line x1="0" y1="40" x2="720" y2="40" stroke="#30363d" stroke-width="1"/>
+  <circle cx="22" cy="20" r="6" fill="#ff5f56"/>
+  <circle cx="42" cy="20" r="6" fill="#ffbd2e"/>
+  <circle cx="62" cy="20" r="6" fill="#27c93f"/>
+  <text x="360" y="25" text-anchor="middle" class="d">metewise — scan-har</text>
+
+  <!-- body -->
+  <text x="20" y="70"><tspan class="g">$ </tspan><tspan class="b">metewise scan-har capture.har --principals principals.json</tspan></text>
+
+  <text x="20" y="114" class="d">ingested 4 exchanges from 1 capture(s); planned 8 cross-principal probe(s)</text>
+
+  <text x="20" y="158" class="w">2 finding(s):</text>
+
+  <text x="20" y="202"><tspan class="r">  [CONFIRMED] </tspan><tspan class="d">9780e9f6c3677e14  </tspan><tspan class="w">GET /invoices/{id}</tspan></text>
+  <text x="20" y="224"><tspan class="d">      axis: </tspan><tspan class="y">cross-tenant</tspan><tspan class="d">   actor </tspan><tspan class="n">'bob'</tspan><tspan class="d"> read </tspan><tspan class="n">'alice'</tspan><tspan class="d"> object</tspan></text>
+  <text x="20" y="246" class="d">      actor received owner's object (sim=1.00); 3 values match baseline</text>
+  <text x="20" y="268"><tspan class="r">        leaked </tspan><tspan class="b">$.customer_email</tspan><tspan class="d"> = </tspan><tspan class="y">'cfo@acme.example'</tspan></text>
+  <text x="20" y="290"><tspan class="r">        leaked </tspan><tspan class="b">$.total</tspan><tspan class="d"> = </tspan><tspan class="y">4820.0</tspan></text>
+  <text x="20" y="312"><tspan class="r">        leaked </tspan><tspan class="b">$.id</tspan><tspan class="d"> = </tspan><tspan class="y">'3f1a9c22-0000-4000-8000-000000000001'</tspan></text>
+
+  <text x="20" y="356"><tspan class="r">  [CONFIRMED] </tspan><tspan class="d">9780e9f6c3677e14  </tspan><tspan class="w">GET /invoices/{id}</tspan><tspan class="d"> (repeat)</tspan></text>
+  <text x="20" y="378"><tspan class="d">      axis: </tspan><tspan class="y">cross-tenant</tspan><tspan class="d">   actor </tspan><tspan class="n">'alice'</tspan><tspan class="d"> read </tspan><tspan class="n">'bob'</tspan><tspan class="d"> object</tspan></text>
+  <text x="20" y="400"><tspan class="r">        leaked </tspan><tspan class="b">$.customer_email</tspan><tspan class="d"> = </tspan><tspan class="y">'ap@globex.example'</tspan></text>
+  <text x="20" y="422"><tspan class="r">        leaked </tspan><tspan class="b">$.total</tspan><tspan class="d"> = </tspan><tspan class="y">1290.5</tspan></text>
+  <text x="20" y="444"><tspan class="r">        leaked </tspan><tspan class="b">$.id</tspan><tspan class="d"> = </tspan><tspan class="y">'7b2e5d44-0000-4000-8000-000000000002'</tspan></text>
+
+  <text x="20" y="488"><tspan class="g">$ </tspan><tspan class="b">echo $?</tspan><tspan class="d">   →  </tspan><tspan class="r">3</tspan><tspan class="d">   (leaks found)</tspan></text>
+</svg>
